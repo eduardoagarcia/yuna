@@ -1,10 +1,12 @@
-<p align="center">
-  <img src="assets/yuna.svg" alt="Yuna logo" width="120" height="95" align="center" />
-</p>
+<div align="center">
 
-<h1 align="center">Yuna Game Engine</h1>
+<img src="assets/yuna.svg" alt="Yuna" width="160" />
 
-Yuna is a fast, dependency-light ECS game engine for Python. Build a world from entities, components, and systems. Run it on a fixed-timestep loop.
+# Yuna Python Game Engine
+
+Fast, dependency-light ECS game engine for Python.
+
+</div>
 
 ## Features
 
@@ -79,7 +81,7 @@ for _ in range(60):
     world.update(delta_time=1 / 60)
 
 pos = world.get_component(entity_id=star, component_type=Position)
-print(pos.x, pos.y)
+print(pos.x, pos.y) # print position
 ```
 
 Sixty ticks is one second at 60 fps. The star falls ~5 units, to `y≈105`.
