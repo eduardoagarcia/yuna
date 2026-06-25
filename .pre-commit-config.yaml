@@ -1,0 +1,46 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        exclude: uv.lock
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pycqa/isort
+    rev: 7.0.0
+    hooks:
+      - id: isort
+        args: [--profile, black]
+
+  # Run mypy inside the project's uv env so it resolves the installed package
+  # and its dependencies. mirrors-mypy runs in an isolated env that can't see
+  # them, which turns every unresolved import into `Any` and produces hundreds
+  # of false `no-any-return` / `unused-ignore` errors.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy -p yuna
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  - repo: https://github.com/lk16/detect-missing-init
+    rev: v0.1.6
+    hooks:
+      - id: detect-missing-init
+        args: ['--create', '--track', '--python-folders', 'src,tests']
