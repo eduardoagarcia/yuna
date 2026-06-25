@@ -31,7 +31,7 @@ Yuna is a fast, dependency-light ECS game engine for Python. Build a world from 
 ## Install
 
 ```bash
-uv add yuna-engine    # or: pip install yuna-engine
+uv add yuna-engine
 ```
 
 ## Quick start
@@ -63,7 +63,7 @@ class GravitySystem(System):
 
     def update(self, world: ECSWorld, delta_time: float) -> None:
         for _entity, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
-            vel.dy += 9.8 * delta_time      # accelerate downward
+            vel.dy += 9.8 * delta_time
             pos.x += vel.dx * delta_time
             pos.y += vel.dy * delta_time
 
@@ -75,11 +75,11 @@ star = world.create_entity()
 world.add_component(entity_id=star, component=Position(x=0.0, y=100.0))
 world.add_component(entity_id=star, component=Velocity(dx=0.0, dy=0.0))
 
-for _ in range(60):                          # ~1 second at 60 fps
+for _ in range(60):
     world.update(delta_time=1 / 60)
 
 pos = world.get_component(entity_id=star, component_type=Position)
-print(pos.x, pos.y)                          # 0.0 104.9816..., the star has fallen
+print(pos.x, pos.y)
 ```
 
 Sixty ticks is one second at 60 fps. The star falls ~5 units, to `y≈105`.
