@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from yuna.profiling.monitor import get_performance_monitor
 from yuna.spatial.collision import CollisionMode
 from yuna.types.vector import Vector2
+
+try:
+    from engine_native import SpatialIndex as NativeSpatialIndex
+except ImportError:  # pragma: no cover
+    NativeSpatialIndex = None
 
 if TYPE_CHECKING:
     from yuna.ecs.component import Component
@@ -41,6 +46,7 @@ class SpatialGrid:
         cell_size: int,
         profiling_enabled: bool = False,
         collision_mode: CollisionMode = CollisionMode.CIRCLE,
+        native_raycast: bool = False,
     ):
         """Initialize spatial grid.
 
@@ -48,6 +54,11 @@ class SpatialGrid:
             cell_size: Size of each grid cell for spatial hashing
             profiling_enabled: Whether to enable performance profiling
             collision_mode: Collision detection mode for raycast queries
+            native_raycast: Route raycasts through the optional engine_native
+                extension module. Requires an installed engine_native package
+                providing SpatialIndex; when absent, the flag is inert and
+                raycasts silently use the pure-Python path, which is the
+                reference implementation and behaviorally identical.
         """
         self._cell_size = cell_size
         self._grid: dict[tuple[int, int], set[EntityID]] = {}
@@ -59,6 +70,15 @@ class SpatialGrid:
         self._tick = -1
         self._component_cache: dict[type, dict[EntityID, Vector2]] = {}
         self._static_component_cache: dict[type, set[Vector2]] = {}
+        self._static_version = 0
+        self._native_index = (
+            NativeSpatialIndex(
+                cell_size=float(cell_size),
+                grid_box_mode=collision_mode == CollisionMode.GRID_BOX,
+            )
+            if native_raycast and NativeSpatialIndex is not None
+            else None
+        )
 
     def _get_cell(self, position: Vector2) -> tuple[int, int]:
         """Calculate grid cell coordinates for a position.
@@ -81,6 +101,8 @@ class SpatialGrid:
             entity_id: Entity to add
             position: Position of entity
         """
+        if self._native_index is not None:
+            self._native_index.add(entity_id=str(entity_id), x=position.x, y=position.y)
         cell = self._get_cell(position=position)
         if cell not in self._grid:
             self._grid[cell] = set()
@@ -93,6 +115,8 @@ class SpatialGrid:
         Args:
             entity_id: Entity to remove
         """
+        if self._native_index is not None:
+            self._native_index.remove(entity_id=str(entity_id))
         if entity_id not in self._entity_positions:
             return
         position = self._entity_positions[entity_id]
@@ -110,6 +134,12 @@ class SpatialGrid:
             entity_id: Entity to move
             new_position: New position
         """
+        if self._native_index is not None:
+            self._native_index.move_entity(
+                entity_id=str(entity_id),
+                new_x=new_position.x,
+                new_y=new_position.y,
+            )
         if entity_id in self._entity_positions:
             old_position = self._entity_positions[entity_id]
             if old_position == new_position:
@@ -143,6 +173,50 @@ class SpatialGrid:
         cell = self._get_cell(position=position)
         return self._grid.get(cell, set()).copy()
 
+    def _collect_cell_candidates(
+        self,
+        min_cell_x: int,
+        max_cell_x: int,
+        min_cell_y: int,
+        max_cell_y: int,
+    ) -> set[EntityID]:
+        """Union the entity sets of occupied cells inside a cell bounding box.
+
+        Picks the scan with fewer cells to visit: every cell in the bounding
+        box, or only the occupied cells when the box is larger than the
+        occupied set. Occupied cells are visited in sorted (x, y) order,
+        matching the bounding-box scan's lexicographic order, so the
+        candidate set is built by an identical insertion sequence and
+        iterates identically in both branches.
+
+        Args:
+            min_cell_x: Minimum cell x coordinate, inclusive
+            max_cell_x: Maximum cell x coordinate, inclusive
+            min_cell_y: Minimum cell y coordinate, inclusive
+            max_cell_y: Maximum cell y coordinate, inclusive
+
+        Returns:
+            Set of entity IDs registered in cells within the bounding box
+        """
+        candidates: set[EntityID] = set()
+        if (max_cell_x - min_cell_x + 1) * (max_cell_y - min_cell_y + 1) > len(
+            self._grid
+        ):
+            for cell in sorted(
+                cell
+                for cell in self._grid
+                if min_cell_x <= cell[0] <= max_cell_x
+                and min_cell_y <= cell[1] <= max_cell_y
+            ):
+                candidates.update(self._grid[cell])
+            return candidates
+        for cell_x in range(min_cell_x, max_cell_x + 1):
+            for cell_y in range(min_cell_y, max_cell_y + 1):
+                cell_entities = self._grid.get((cell_x, cell_y))
+                if cell_entities:
+                    candidates.update(cell_entities)
+        return candidates
+
     def get_in_radius(
         self,
         position: Vector2,
@@ -164,12 +238,12 @@ class SpatialGrid:
         min_cell_y = math.floor((position.y - radius) / self._cell_size)
         max_cell_y = math.floor((position.y + radius) / self._cell_size)
 
-        candidates: set[EntityID] = set()
-        for cell_x in range(min_cell_x, max_cell_x + 1):
-            for cell_y in range(min_cell_y, max_cell_y + 1):
-                cell_entities = self._grid.get((cell_x, cell_y))
-                if cell_entities:
-                    candidates.update(cell_entities)
+        candidates = self._collect_cell_candidates(
+            min_cell_x=min_cell_x,
+            max_cell_x=max_cell_x,
+            min_cell_y=min_cell_y,
+            max_cell_y=max_cell_y,
+        )
 
         result: set[EntityID] = set()
         for entity_id in candidates:
@@ -195,12 +269,12 @@ class SpatialGrid:
         min_cell_y = math.floor(min_pos.y / self._cell_size)
         max_cell_y = math.floor(max_pos.y / self._cell_size)
 
-        candidates: set[EntityID] = set()
-        for cell_x in range(min_cell_x, max_cell_x + 1):
-            for cell_y in range(min_cell_y, max_cell_y + 1):
-                cell_entities = self._grid.get((cell_x, cell_y))
-                if cell_entities:
-                    candidates.update(cell_entities)
+        candidates = self._collect_cell_candidates(
+            min_cell_x=min_cell_x,
+            max_cell_x=max_cell_x,
+            min_cell_y=min_cell_y,
+            max_cell_y=max_cell_y,
+        )
 
         result: set[EntityID] = set()
         for entity_id in candidates:
@@ -229,6 +303,29 @@ class SpatialGrid:
         Returns:
             List of entity IDs intersected, ordered by distance from origin
         """
+        if self._native_index is not None and all(
+            math.isfinite(component)
+            for component in (
+                origin.x,
+                origin.y,
+                direction.x,
+                direction.y,
+                max_distance,
+                origin.x + direction.x * max_distance,
+                origin.y + direction.y * max_distance,
+            )
+        ):
+            return cast(
+                "list[EntityID]",
+                self._native_index.raycast(
+                    origin_x=origin.x,
+                    origin_y=origin.y,
+                    dir_x=direction.x,
+                    dir_y=direction.y,
+                    max_distance=max_distance,
+                ),
+            )
+
         end_point = origin.add(other=direction.multiply(scalar=max_distance))
         min_x = min(origin.x, end_point.x)
         max_x = max(origin.x, end_point.x)
@@ -646,14 +743,43 @@ class SpatialGrid:
 
         return positions
 
+    @property
+    def static_version(self) -> int:
+        """Revision of the static position caches.
+
+        Changes only when a static entity leaves the grid, so a caller holding
+        its own derived cache compares one integer per read instead of
+        rebuilding on a timer or re-deriving on every call.
+
+        Returns:
+            Current static cache revision
+        """
+        return self._static_version
+
+    def invalidate_static_cache(self) -> None:
+        """Drop cached static positions after a static entity is removed.
+
+        Static entities are cached without expiry because they never move, but
+        they can still be removed, and a cache that outlives the entity keeps
+        reporting a position nothing occupies.
+
+        Invalidation is driven by removal rather than by the clock so an
+        ordinary tick pays nothing at all: the next reader re-queries once, and
+        readers tracking static_version rebuild only then.
+        """
+        self._static_component_cache.clear()
+        self._static_version += 1
+
     def get_static_positions_by_component(
         self,
         component_type: type[Component],
     ) -> set[Vector2]:
         """Get positions for static entities with specified component type.
 
-        Static entities (e.g., walls) are queried once and cached permanently.
-        Use this for entities that never move during game.
+        Static entities (e.g., walls) are queried once and cached. The cache
+        assumes a fixed static population: removal invalidates it, but an entity
+        added after the first read is not picked up. Use this for entities that
+        never move during game.
 
         Args:
             component_type: Component type to filter by

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import random
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from yuna.config.store import ConfigStore
 from yuna.ecs.archetype_store import ArchetypeStore
@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     from yuna.modifiers.pipeline import ModifierPipeline
     from yuna.state.manager import StateManager
     from yuna.state.snapshot import WorldSnapshot
+
+
+ComponentT = TypeVar("ComponentT", bound="Component")
 
 
 class ECSWorld:
@@ -327,6 +330,26 @@ class ECSWorld:
         """
         return Query(store=self._components, use_archetypes=self._use_archetypes)
 
+    def component_map(
+        self,
+        component_type: type[ComponentT],
+    ) -> dict[EntityID, ComponentT]:
+        """Get the live entity-to-component mapping for a type.
+
+        The bulk read for hot per-tick scans that a Query would revisit
+        entity by entity. Same contract as ComponentStore.get_map: the
+        dict is live internal storage, callers must never mutate it,
+        and Python-iterating it is only safe while kernels are not
+        running (system phase, command drain).
+
+        Args:
+            component_type: Type of components to view
+
+        Returns:
+            Live mapping of entity IDs to component instances
+        """
+        return self._components.get_map(component_type=component_type)
+
     def register_system(self, system: System) -> None:
         """Register system for execution.
 
@@ -356,13 +379,32 @@ class ECSWorld:
             else:
                 system.update(world=self, delta_time=delta_time)
 
+        self.flush_destroyed_entities()
+
+        self._components._dirty_flag.clear_all()
+
+    def flush_destroyed_entities(self) -> set[EntityID]:
+        """Remove entities marked by destroy_entity and return their ids.
+
+        destroy_entity only marks. Games that drive their systems through their
+        own scheduler never reach update(), so without calling this the mark is
+        never acted on: queries, snapshots, spatial sync and any derived cache
+        keep serving an entity whose components are still in the store.
+
+        Separate from update() because a game with its own scheduler wants the
+        reaping without also running the systems registered on the world.
+
+        Returns:
+            Entity ids removed by this call
+        """
         destroyed_entities = self._entities.flush_destroyed()
+
         for entity_id in sorted(destroyed_entities):
             self._components.remove_all(entity_id=entity_id)
             self._relationships.remove_all_relationships(entity_id=entity_id)
             self._hierarchy.remove_entity(entity_id=entity_id)
 
-        self._components._dirty_flag.clear_all()
+        return destroyed_entities
 
     def get_all_entities(self) -> set[EntityID]:
         """Get all active entity IDs.

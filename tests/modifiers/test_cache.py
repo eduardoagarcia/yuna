@@ -229,9 +229,9 @@ def test_invalidate_pattern_removes_matching_entries() -> None:
 def test_invalidate_pattern_removes_entries_from_access_order() -> None:
     """Test invalidate_pattern removes matching entries from access order."""
     cache = ModifierCache()
-    pattern = fake.unique.word()
+    pattern = fake.pystr(min_chars=10, max_chars=15)
     key1 = f"{pattern}_test"
-    key2 = fake.unique.word()
+    key2 = f"unrelated_{fake.pystr(min_chars=10, max_chars=15)}"
     compute_fn = Mock(return_value=fake.pyint())
 
     cache.get_or_compute(key=key1, compute_fn=compute_fn)

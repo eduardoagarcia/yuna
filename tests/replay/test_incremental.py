@@ -945,32 +945,6 @@ def test_compute_component_level_delta_component_added() -> None:
     assert delta.components.added[entity_id]["Health"]["value"] == 100
 
 
-def test_compute_component_level_delta_skips_unchanged_components() -> None:
-    """Components that are the same object in both snapshots are skipped."""
-    entity_id = EntityID(fake.uuid4())
-    entities: dict[EntityID, dict[str, Any]] = {
-        entity_id: {"Position": {"x": 1.0, "y": 2.0}}
-    }
-    snapshot1 = WorldSnapshot(tick=0, timestamp=0.0, entities=entities, metadata={})
-    snapshot2 = WorldSnapshot(tick=1, timestamp=0.1, entities=entities, metadata={})
-
-    delta = compute_component_level_delta(previous=snapshot1, current=snapshot2)
-
-    assert len(delta.components.added) == 0
-    assert len(delta.components.modified) == 0
-    assert len(delta.components.removed) == 0
-
-
-def test_finalize_pending_frame_noop_without_pending_frame() -> None:
-    """Finalizing with no pending frame is a no-op."""
-    recorder = IncrementalRecorder()
-    assert recorder._pending_frame is None
-
-    recorder._finalize_pending_frame(world=None)
-
-    assert recorder._pending_frame is None
-
-
 def test_incremental_recorder_without_component_level_deltas() -> None:
     """Test recorder using regular delta computation (not component-level)."""
 

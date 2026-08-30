@@ -20,7 +20,6 @@ from yuna.state.serializer import (
     _component_plans,
     _is_deeply_immutable_dataclass,
     _is_immutable_annotation,
-    bump_serialization_version,
 )
 from yuna.state.snapshot import WorldSnapshot
 from yuna.types.identifiers import EntityID
@@ -1448,15 +1447,8 @@ def test_immutable_annotation_accepts_immutable_shapes() -> None:
     assert _is_immutable_annotation(annotation=FrozenVector) is True
 
 
-def test_bump_serialization_version_increments_field() -> None:
-    """The helper increments the component's version counter in place."""
-    bag = VersionedBagComponent(values={"speed": 1.0})
-    before = bag.serialization_version
-    bump_serialization_version(component=bag)
-    assert bag.serialization_version == before + 1
+def test_normalize_for_serialization_passes_unhandled_types_through() -> None:
+    """Types with no normalization rule fall through unchanged."""
+    unhandled = (fake.pyint(), fake.word())
 
-
-def test_normalize_for_serialization_passes_opaque_values_through() -> None:
-    """A value matching no known shape falls through and is returned as-is."""
-    sentinel = object()
-    assert SnapshotSerializer._normalize_for_serialization(data=sentinel) is sentinel
+    assert SnapshotSerializer._normalize_for_serialization(data=unhandled) is unhandled

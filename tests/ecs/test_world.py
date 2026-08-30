@@ -1000,3 +1000,15 @@ def test_write_protection_clearing_owner_restores_writes() -> None:
     world.add_component(entity_id=other, component=Position(x=1.0, y=2.0))
 
     assert world.has_component(entity_id=other, component_type=Position)
+
+
+def test_component_map_returns_live_mapping() -> None:
+    """component_map exposes the live entity-to-component mapping."""
+    world = ECSWorld()
+    entity_id = world.create_entity()
+    position = Position(x=3.0, y=4.0)
+    world.add_component(entity_id=entity_id, component=position)
+
+    component_map = world.component_map(component_type=Position)
+
+    assert component_map[entity_id] is position

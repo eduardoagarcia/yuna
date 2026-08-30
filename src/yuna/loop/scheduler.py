@@ -162,6 +162,10 @@ class SystemScheduler:
     ) -> None:
         """Execute systems in parallel by dependency layers.
 
+        Per-system monitor sampling is sequential-only: layers run
+        concurrently, so wall-clock samples taken here would overlap and
+        mislead. Use execute_sequential when profiling system cost.
+
         Args:
             world: ECS world to pass to systems
             delta_time: Time elapsed since last update
@@ -181,11 +185,23 @@ class SystemScheduler:
     ) -> None:
         """Execute systems sequentially in priority/dependency order.
 
+        Monitor samples are keyed by system class name, so multiple
+        registered instances of one class aggregate into a single metric.
+
         Args:
             world: ECS world to pass to systems
             delta_time: Time elapsed since last update
         """
         systems = self.get_ordered_systems()
 
+        if self._monitor is None:
+            for system in systems:
+                system.update(world=world, delta_time=delta_time)
+            return
+
         for system in systems:
-            system.update(world=world, delta_time=delta_time)
+            with self._monitor.sample(
+                category="systems",
+                name=type(system).__name__,
+            ):
+                system.update(world=world, delta_time=delta_time)

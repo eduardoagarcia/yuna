@@ -123,13 +123,13 @@ class GameRecording:
                         "tick": delta.tick,
                         "entities": {
                             "added": delta.entities.added,
-                            "removed": list(delta.entities.removed),
+                            "removed": sorted(delta.entities.removed),
                         },
                         "components": {
                             "added": delta.components.added,
                             "modified": delta.components.modified,
                             "removed": {
-                                eid: list(names)
+                                eid: sorted(names)
                                 for eid, names in delta.components.removed.items()
                             },
                         },

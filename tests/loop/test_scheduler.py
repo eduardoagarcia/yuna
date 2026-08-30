@@ -252,7 +252,7 @@ def test_get_parallel_jobs() -> None:
     jobs = scheduler.get_parallel_jobs()
 
     assert len(jobs) == 2
-    assert all(job.system in [system1, system2] for job in jobs)
+    assert all(job.system in {system1, system2} for job in jobs)
 
 
 def test_get_parallel_jobs_with_dependencies() -> None:
@@ -303,3 +303,23 @@ async def test_execute_sequential() -> None:
 
     assert system1.update_count == 1
     assert system2.update_count == 1
+
+
+@pytest.mark.asyncio
+async def test_execute_sequential_samples_each_system() -> None:
+    """Test sequential execution records per-system timing when monitored."""
+    monitor = PerformanceMonitor(enabled=True)
+    scheduler = SystemScheduler(monitor=monitor)
+    system1 = TestSystem(priority_value=100)
+    system2 = TestSystem(priority_value=200)
+    scheduler.register(system=system1)
+    scheduler.register(system=system2)
+    world = ECSWorld()
+
+    await scheduler.execute_sequential(world=world, delta_time=0.016)
+
+    assert system1.update_count == 1
+    assert system2.update_count == 1
+    system_stats = monitor.get_category_stats(category="systems")
+    assert set(system_stats.keys()) == {"TestSystem"}
+    assert system_stats["TestSystem"].count == 2

@@ -247,7 +247,7 @@ async def test_job_can_be_executed_multiple_times_after_reset() -> None:
     assert job.is_complete
 
     job.reset()
-    assert not job.is_complete
+    assert job.future is None
 
     await job.execute(world=world, delta_time=0.016)
     assert system.update_count == 2
