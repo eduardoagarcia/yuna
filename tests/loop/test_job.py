@@ -169,6 +169,7 @@ async def test_job_execute_sets_exception_on_failure() -> None:
         job.future.result()
 
 
+@pytest.mark.asyncio
 async def test_job_is_complete_property() -> None:
     """Test is_complete property reflects future state."""
     system = TestSystem()
@@ -183,6 +184,7 @@ async def test_job_is_complete_property() -> None:
     assert job.is_complete
 
 
+@pytest.mark.asyncio
 async def test_job_reset() -> None:
     """Test job reset clears future."""
     system = TestSystem()

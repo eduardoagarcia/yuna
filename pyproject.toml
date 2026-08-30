@@ -88,17 +88,7 @@ allow-magic-value-types = ["int", "str", "bytes"]
 max-args = 10
 
 [tool.ruff.lint.per-file-ignores]
-# Tests intentionally assert `== ""`, use plain fixture classes, explicit
-# arithmetic, and list membership — relax those preview-rule nits here.
-"tests/**/*.py" = [
-    "PLR2004",
-    "PLR6301",
-    "A",
-    "PLC1901",
-    "B903",
-    "PLR6104",
-    "PLR6201",
-]
+"tests/**/*.py" = ["PLR2004", "PLR6301", "A"]
 
 [tool.isort]
 profile = "black"

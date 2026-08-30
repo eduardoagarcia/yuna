@@ -1,5 +1,7 @@
 """Tests for service provider protocol."""
 
+from dataclasses import dataclass
+
 from faker import Faker
 
 from yuna.services.provider import ServiceFactory, ServiceProvider
@@ -7,11 +9,11 @@ from yuna.services.provider import ServiceFactory, ServiceProvider
 fake = Faker()
 
 
+@dataclass
 class DummyService:
     """Test service for provider testing."""
 
-    def __init__(self, value: str) -> None:
-        self.value = value
+    value: str
 
 
 def test_service_factory_type_alias() -> None:

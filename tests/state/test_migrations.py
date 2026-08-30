@@ -544,8 +544,8 @@ def test_migration_modifies_existing_fields() -> None:
 
     @registry.migration(component_type="Position", from_version=1, to_version=2)
     def upgrade_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
-        data["x"] = data["x"] * 2.0
-        data["y"] = data["y"] * 2.0
+        data["x"] *= 2.0
+        data["y"] *= 2.0
         return data
 
     data = {"x": 1.0, "y": 2.0, "__version__": 1}
