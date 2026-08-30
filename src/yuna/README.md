@@ -21,7 +21,7 @@ from yuna.loop.game_loop import GameLoop
 from yuna.loop.scheduler import SystemScheduler
 from yuna.loop.time import TimeManager
 
-time_manager = TimeManager(fixed_delta=1/60)
+time_manager = TimeManager(fixed_delta=1 / 60)
 scheduler = SystemScheduler()
 world = ECSWorld()
 
@@ -42,15 +42,18 @@ while running:
 from dataclasses import dataclass
 from yuna.ecs.component import Component
 
+
 @dataclass
 class Position(Component):
     x: float
     y: float
 
+
 @dataclass
 class Velocity(Component):
     dx: float
     dy: float
+
 
 entity = world.create_entity()
 world.add_component(entity_id=entity, component=Position(x=0.0, y=0.0))
@@ -62,15 +65,19 @@ world.add_component(entity_id=entity, component=Velocity(dx=1.0, dy=0.0))
 ```python
 from yuna.ecs.system import System
 
+
 class MovementSystem(System):
     @property
     def priority(self) -> int:
         return 100
 
     def update(self, world: ECSWorld, delta_time: float) -> None:
-        for entity_id, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
+        for entity_id, (pos, vel) in (
+            world.query().with_components(Position, Velocity).iterator()
+        ):
             pos.x += vel.dx * delta_time
             pos.y += vel.dy * delta_time
+
 
 scheduler.register(system=MovementSystem())
 ```
@@ -214,26 +221,36 @@ world = ECSWorld()
 def create_entity() -> EntityID:
     """Create a new entity."""
 
+
 def destroy_entity(entity_id: EntityID) -> None:
     """Mark entity for destruction at end of update cycle."""
+
 
 def add_component(entity_id: EntityID, component: Component) -> None:
     """Add component to entity."""
 
-def get_component(entity_id: EntityID, component_type: type[Component]) -> Component | None:
+
+def get_component(
+    entity_id: EntityID, component_type: type[Component]
+) -> Component | None:
     """Get component from entity."""
+
 
 def has_component(entity_id: EntityID, component_type: type[Component]) -> bool:
     """Check if entity has component."""
 
+
 def remove_component(entity_id: EntityID, component_type: type[Component]) -> None:
     """Remove component from entity."""
+
 
 def query() -> Query:
     """Create a new component query."""
 
+
 def register_system(system: System) -> None:
     """Register system for execution."""
+
 
 def update(delta_time: float) -> None:
     """Update all systems and flush destroyed entities."""
@@ -253,14 +270,18 @@ query = world.query()
 def with_components(*component_types: type[Component]) -> Query:
     """Filter for entities that have all specified components."""
 
+
 def without_components(*component_types: type[Component]) -> Query:
     """Filter for entities that don't have any specified components."""
+
 
 def iterator() -> Iterator[tuple[EntityID, tuple[Component, ...]]]:
     """Iterate over entities matching the query with their components."""
 
+
 def get_entities() -> set[EntityID]:
     """Get all entity IDs matching the query."""
+
 
 def count() -> int:
     """Count number of entities matching the query."""
@@ -271,9 +292,17 @@ def count() -> int:
 ```python
 entities = world.query().with_components(Position).get_entities()
 
-entities = world.query().with_components(Position, Velocity).without_components(Dead).get_entities()
+entities = (
+    world
+    .query()
+    .with_components(Position, Velocity)
+    .without_components(Dead)
+    .get_entities()
+)
 
-for entity_id, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
+for entity_id, (pos, vel) in (
+    world.query().with_components(Position, Velocity).iterator()
+):
     pos.x += vel.dx
     pos.y += vel.dy
 ```
@@ -294,20 +323,26 @@ bus = EventBus()
 def emit(event: Event, delay_frames: int = 0) -> None:
     """Emit event with optional frame delay."""
 
+
 def emit_priority(event: Event, priority: int, delay_frames: int = 0) -> None:
     """Emit event with specific priority."""
+
 
 def subscribe(event_type: str, handler: Callable[[Event], None]) -> None:
     """Subscribe handler to specific event type."""
 
+
 def subscribe_all(handler: Callable[[Event], None]) -> None:
     """Subscribe handler to all event types."""
+
 
 def unsubscribe(event_type: str, handler: Callable[[Event], None]) -> None:
     """Unsubscribe handler from specific event type."""
 
+
 def process_events() -> None:
     """Process all events in current frame."""
+
 
 def end_tick() -> None:
     """End current tick and move delayed events to current frame."""
@@ -319,12 +354,15 @@ def end_tick() -> None:
 from dataclasses import dataclass
 from yuna.events.event import Event
 
+
 @dataclass(frozen=True)
 class PlayerDiedEvent(Event):
     player_id: EntityID
 
+
 def on_player_died(event: Event) -> None:
     print(f"Player {event.player_id} died!")
+
 
 bus.subscribe(event_type="PlayerDiedEvent", handler=on_player_died)
 bus.emit(event=PlayerDiedEvent(timestamp=0.0, tick=100, player_id=player_id))
@@ -358,11 +396,14 @@ pipeline = ModifierPipeline(config=config)
 def queue_modifier(modifier: Modifier) -> None:
     """Add modifier to processing queue."""
 
+
 def process(world: Any | None = None) -> dict[tuple, float]:
     """Process all queued modifiers through pipeline."""
 
+
 def clear_queue() -> None:
     """Clear all queued modifiers without processing."""
+
 
 def get_queue_size() -> int:
     """Get number of queued modifiers."""
@@ -406,14 +447,18 @@ grid = SpatialGrid(cell_size=10)
 def add(entity_id: EntityID, position: Vector2) -> None:
     """Add entity to spatial grid at position."""
 
+
 def remove(entity_id: EntityID) -> None:
     """Remove entity from spatial grid."""
+
 
 def move(entity_id: EntityID, new_position: Vector2) -> None:
     """Update entity position in spatial grid."""
 
+
 def get_at(position: Vector2) -> set[EntityID]:
     """Get all entities at a specific position (O(1) lookup)."""
+
 
 def get_in_radius(position: Vector2, radius: float) -> set[EntityID]:
     """Get all entities within radius of position."""
@@ -440,12 +485,15 @@ Reusable object pool to reduce allocations.
 ```python
 from yuna.resources.pool import ObjectPool
 
+
 def factory() -> dict:
     return {"x": 0.0, "y": 0.0}
+
 
 def reset(obj: dict) -> None:
     obj["x"] = 0.0
     obj["y"] = 0.0
+
 
 pool = ObjectPool[dict](factory=factory, reset=reset, max_size=100)
 ```
@@ -456,11 +504,14 @@ pool = ObjectPool[dict](factory=factory, reset=reset, max_size=100)
 def acquire() -> T:
     """Get object from pool or create new one."""
 
+
 def release(obj: T) -> None:
     """Return object to pool after reset."""
 
+
 def clear() -> None:
     """Remove all objects from pool."""
+
 
 def count() -> int:
     """Get number of objects in pool."""
@@ -491,8 +542,10 @@ factory = FlyweightFactory[str, dict]()
 def get(key: K, factory: Callable[[], T]) -> T:
     """Get shared instance for key, creating if needed."""
 
+
 def clear() -> None:
     """Remove all cached instances."""
+
 
 def count() -> int:
     """Get number of cached instances."""
@@ -530,8 +583,10 @@ game_loop = GameLoop(
 def tick() -> None:
     """Execute one game tick."""
 
+
 def update(elapsed: float) -> int:
     """Update game loop with elapsed time, returns number of ticks executed."""
+
 
 def reset_time() -> None:
     """Reset time manager accumulator to zero."""
@@ -543,6 +598,7 @@ def reset_time() -> None:
 @property
 def fixed_delta() -> float:
     """Get fixed timestep value."""
+
 
 @property
 def accumulator() -> float:
@@ -556,7 +612,7 @@ Manages fixed timestep game loop timing.
 ```python
 from yuna.loop.time import TimeManager
 
-time_manager = TimeManager(fixed_delta=1/60)
+time_manager = TimeManager(fixed_delta=1 / 60)
 ```
 
 **Methods:**
@@ -564,6 +620,7 @@ time_manager = TimeManager(fixed_delta=1/60)
 ```python
 def update(elapsed: float) -> int:
     """Update accumulator and calculate ticks to execute."""
+
 
 def reset() -> None:
     """Reset accumulator to zero."""
@@ -575,6 +632,7 @@ def reset() -> None:
 @property
 def fixed_delta() -> float:
     """Get fixed timestep value."""
+
 
 @property
 def accumulator() -> float:
@@ -597,8 +655,10 @@ scheduler = SystemScheduler()
 def register(system: System) -> None:
     """Register system for execution."""
 
+
 def get_ordered_systems() -> list[System]:
     """Get systems in priority order."""
+
 
 def clear() -> None:
     """Remove all systems from scheduler."""
@@ -627,11 +687,17 @@ locator = ServiceLocator()
 **Methods:**
 
 ```python
-def register(interface: type[T], factory: Callable[[], T], lifetime: ServiceLifetime = ServiceLifetime.TRANSIENT) -> None:
+def register(
+    interface: type[T],
+    factory: Callable[[], T],
+    lifetime: ServiceLifetime = ServiceLifetime.TRANSIENT,
+) -> None:
     """Register a service with its factory and lifetime."""
+
 
 def resolve(interface: type[T]) -> T:
     """Resolve service instance by interface type."""
+
 
 def clear() -> None:
     """Clear all registrations and singletons."""
@@ -642,9 +708,11 @@ def clear() -> None:
 ```python
 from yuna.services.lifetime import ServiceLifetime
 
+
 class Logger:
     def log(self, message: str) -> None:
         print(message)
+
 
 locator.register(
     interface=Logger,
@@ -673,7 +741,7 @@ from yuna.services.locator import ServiceLocator
 
 world = ECSWorld()
 event_bus = EventBus()
-time_manager = TimeManager(fixed_delta=1/60)
+time_manager = TimeManager(fixed_delta=1 / 60)
 scheduler = SystemScheduler()
 
 config = ModifierConfig()
@@ -718,7 +786,9 @@ class MovementSystem(System):
     def update(self, world: ECSWorld, delta_time: float) -> None:
         spatial_grid = locator.resolve(interface=SpatialGrid)
 
-        for entity_id, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
+        for entity_id, (pos, vel) in (
+            world.query().with_components(Position, Velocity).iterator()
+        ):
             old_pos = Vector2(x=pos.x, y=pos.y)
             pos.x += vel.dx * delta_time
             pos.y += vel.dy * delta_time
@@ -728,13 +798,15 @@ class MovementSystem(System):
                 new_position=Vector2(x=pos.x, y=pos.y),
             )
 
-            event_bus.emit(event=EntityMovedEvent(
-                timestamp=time.time(),
-                tick=current_tick,
-                entity_id=entity_id,
-                old_position=old_pos,
-                new_position=Vector2(x=pos.x, y=pos.y),
-            ))
+            event_bus.emit(
+                event=EntityMovedEvent(
+                    timestamp=time.time(),
+                    tick=current_tick,
+                    entity_id=entity_id,
+                    old_position=old_pos,
+                    new_position=Vector2(x=pos.x, y=pos.y),
+                )
+            )
 ```
 
 ### Combat System with Modifiers
@@ -748,7 +820,9 @@ class CombatSystem(System):
     def update(self, world: ECSWorld, delta_time: float) -> None:
         spatial_grid = locator.resolve(interface=SpatialGrid)
 
-        for entity_id, (pos, attack) in world.query().with_components(Position, Attack).iterator():
+        for entity_id, (pos, attack) in (
+            world.query().with_components(Position, Attack).iterator()
+        ):
             nearby = spatial_grid.get_in_radius(
                 position=Vector2(x=pos.x, y=pos.y),
                 radius=attack.range,
@@ -781,17 +855,21 @@ class DeathSystem(System):
     def update(self, world: ECSWorld, delta_time: float) -> None:
         for entity_id, health in world.query().with_components(Health).iterator():
             if health.value <= 0:
-                event_bus.emit(event=EntityDiedEvent(
-                    timestamp=time.time(),
-                    tick=current_tick,
-                    entity_id=entity_id,
-                ))
+                event_bus.emit(
+                    event=EntityDiedEvent(
+                        timestamp=time.time(),
+                        tick=current_tick,
+                        entity_id=entity_id,
+                    )
+                )
                 world.destroy_entity(entity_id=entity_id)
+
 
 def on_entity_died(event: Event) -> None:
     print(f"Entity {event.entity_id} died!")
     spawn_death_particles(event.entity_id)
     play_death_sound()
+
 
 event_bus.subscribe(event_type="EntityDiedEvent", handler=on_entity_died)
 ```

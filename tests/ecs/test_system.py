@@ -122,7 +122,7 @@ def test_multiple_systems_can_be_created() -> None:
     system2 = ConcreteSystem(priority_value=200)
     system3 = AnotherSystem()
     assert system1 is not system2
-    assert system2 is not system3  # type: ignore[comparison-overlap]
+    assert system2 is not system3
 
 
 def test_system_sorting_by_priority() -> None:

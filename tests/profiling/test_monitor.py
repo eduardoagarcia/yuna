@@ -85,7 +85,7 @@ def test_context_manager_preserves_exceptions() -> None:
             time.sleep(0.01)
             raise ValueError(error_message)
 
-    stats = monitor.get_timing_stats(category=category, name=name)  # type: ignore[unreachable]
+    stats = monitor.get_timing_stats(category=category, name=name)
     assert stats is not None
     assert stats.count == 1
 

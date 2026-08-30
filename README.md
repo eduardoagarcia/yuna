@@ -74,7 +74,9 @@ class GravitySystem(System):
         return 100
 
     def update(self, world: ECSWorld, delta_time: float) -> None:
-        for _entity, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
+        for _entity, (pos, vel) in (
+            world.query().with_components(Position, Velocity).iterator()
+        ):
             vel.dy += 9.8 * delta_time
             pos.x += vel.dx * delta_time
             pos.y += vel.dy * delta_time
@@ -91,7 +93,7 @@ for _ in range(60):
     world.update(delta_time=1 / 60)
 
 pos = world.get_component(entity_id=star, component_type=Position)
-print(pos.x, pos.y) # print position
+print(pos.x, pos.y)  # print position
 ```
 
 Sixty ticks is one second at 60 fps. The star falls ~5 units, to `y≈105`.

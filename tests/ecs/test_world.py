@@ -812,7 +812,7 @@ def test_world_spatial_property_returns_none_when_not_configured() -> None:
 
 def test_world_spatial_property_returns_grid_when_configured() -> None:
     """Test that spatial property returns spatial grid when configured."""
-    grid = SpatialGrid(cell_size=fake.pyfloat(min_value=1.0, max_value=100.0))
+    grid = SpatialGrid(cell_size=fake.random_int(min=1, max=100))
     world = ECSWorld(spatial_grid=grid)
 
     assert world.spatial is grid

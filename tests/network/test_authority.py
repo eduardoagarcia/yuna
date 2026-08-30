@@ -32,12 +32,12 @@ def test_network_role_enum_members() -> None:
 def test_authority_equality() -> None:
     """Test Authority enum equality."""
     assert Authority.SERVER == Authority.SERVER
-    assert Authority.SERVER != Authority.CLIENT  # type: ignore[comparison-overlap]
-    assert Authority.CLIENT != Authority.SHARED  # type: ignore[comparison-overlap]
+    assert Authority.SERVER != Authority.CLIENT
+    assert Authority.CLIENT != Authority.SHARED
 
 
 def test_network_role_equality() -> None:
     """Test NetworkRole enum equality."""
     assert NetworkRole.SERVER == NetworkRole.SERVER
-    assert NetworkRole.SERVER != NetworkRole.CLIENT  # type: ignore[comparison-overlap]
-    assert NetworkRole.CLIENT != NetworkRole.PEER  # type: ignore[comparison-overlap]
+    assert NetworkRole.SERVER != NetworkRole.CLIENT
+    assert NetworkRole.CLIENT != NetworkRole.PEER

@@ -40,7 +40,7 @@ dev = [
     "faker>=37.6",
     "msgpack>=1.1",
     "ruff>=0.12",
-    "mypy>=1.17",
+    "mypy>=2.3",
     "isort>=6.0",
     "pre-commit>=4.3",
     "types-PyYAML",
@@ -115,5 +115,5 @@ check_untyped_defs = true
 no_implicit_optional = true
 
 [[tool.mypy.overrides]]
-module = ["lz4.*", "engine_native"]
+module = ["lz4.*", "engine_native", "msgpack.*"]
 ignore_missing_imports = true

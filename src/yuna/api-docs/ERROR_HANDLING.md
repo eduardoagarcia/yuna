@@ -61,7 +61,7 @@ def update_position(entity_id: EntityID, position: Position) -> None:
     if not world.has_entity(entity_id):
         raise EntityNotFoundError(
             entity_id=str(entity_id),
-            message="Cannot update position for non-existent entity"
+            message="Cannot update position for non-existent entity",
         )
 
     world.set_position(entity_id=entity_id, position=position)
@@ -93,7 +93,7 @@ def serialize_component(component_type: str, component: Any) -> dict:
     if component_type not in serializers:
         raise ComponentNotFoundError(
             component_type=component_type,
-            message=f"No serializer registered for {component_type}"
+            message=f"No serializer registered for {component_type}",
         )
 
     return serializers[component_type].to_dict(component)
@@ -121,7 +121,7 @@ def get_service(service_name: str) -> Service:
     if service_name not in services:
         raise ServiceNotFoundError(
             service_name=service_name,
-            message=f"Service {service_name} must be registered before use"
+            message=f"Service {service_name} must be registered before use",
         )
 
     return services[service_name]
@@ -147,7 +147,7 @@ def move_entity(entity_id: EntityID, target: Position) -> None:
         raise ValidationError(
             field="target",
             reason="Target position is outside world bounds",
-            value=f"({target.x}, {target.y})"
+            value=f"({target.x}, {target.y})",
         )
 
     world.set_position(entity_id=entity_id, position=target)
@@ -180,7 +180,7 @@ def deserialize_position(data: dict) -> Position:
         raise SerializationError(
             operation="deserialize",
             component_type="Position",
-            reason="Missing required fields 'x' and 'y'"
+            reason="Missing required fields 'x' and 'y'",
         )
 
     try:
@@ -189,7 +189,7 @@ def deserialize_position(data: dict) -> Position:
         raise SerializationError(
             operation="deserialize",
             component_type="Position",
-            reason=f"Invalid data types: {e}"
+            reason=f"Invalid data types: {e}",
         )
 ```
 
@@ -210,7 +210,7 @@ def replicate_to_observer(observer_id: str, entities: list[Entity]) -> None:
         raise NetworkError(
             operation="replicate",
             reason="Observer not registered",
-            observer_id=observer_id
+            observer_id=observer_id,
         )
 
     observers[observer_id].send(entities)
@@ -233,7 +233,7 @@ def start_engine() -> None:
         raise StateError(
             operation="start",
             state="running",
-            reason="Cannot start engine that is already running"
+            reason="Cannot start engine that is already running",
         )
 
     engine.is_running = True
@@ -248,6 +248,7 @@ Return `None` for expected misses:
 ```python
 def get_entity(entity_id: EntityID) -> Entity | None:
     return entities.get(entity_id)
+
 
 def get_component(entity_id: EntityID, component_type: str) -> Any | None:
     return components.get((entity_id, component_type))
@@ -267,11 +268,11 @@ def validate_command(command: Command) -> tuple[bool, str]:
 
     return True, ""
 
+
 # Usage
 is_valid, reason = validate_command(command)
 if not is_valid:
     logger.warning(f"Invalid command: {reason}")
-
 ```
 
 ### Pattern 3: State Mutations
@@ -283,13 +284,15 @@ def add_component(entity_id: EntityID, component: Component) -> None:
     if not world.has_entity(entity_id):
         raise EntityNotFoundError(
             entity_id=str(entity_id),
-            message="Cannot add component to non-existent entity"
+            message="Cannot add component to non-existent entity",
         )
 
-    if world.has_component(entity_id=entity_id, component_type=type(component).__name__):
+    if world.has_component(
+        entity_id=entity_id, component_type=type(component).__name__
+    ):
         raise StateError(
             operation="add_component",
-            reason=f"Entity {entity_id} already has {type(component).__name__} component"
+            reason=f"Entity {entity_id} already has {type(component).__name__} component",
         )
 
     world.components[(entity_id, type(component).__name__)] = component
@@ -304,7 +307,7 @@ Always provide helpful context:
 raise ValidationError(
     field="position",
     reason="Position must be within world bounds (0-100, 0-100)",
-    value=f"({pos.x}, {pos.y})"
+    value=f"({pos.x}, {pos.y})",
 )
 
 # Bad: Vague error message
@@ -320,10 +323,10 @@ Let exceptions bubble up, catch at appropriate level:
 def deserialize_component(data: dict) -> Component:
     if "type" not in data:
         raise SerializationError(
-            operation="deserialize",
-            reason="Missing required field 'type'"
+            operation="deserialize", reason="Missing required field 'type'"
         )
     return Component(**data)
+
 
 # Mid-level function: let it propagate
 def load_entity(data: dict) -> Entity:
@@ -333,6 +336,7 @@ def load_entity(data: dict) -> Entity:
         component = deserialize_component(comp_data)
         entity.add_component(component)
     return entity
+
 
 # High-level function: catch and handle
 def load_world(path: str) -> World:
@@ -405,6 +409,7 @@ def test_entity_not_found_raises_error():
 
     assert exc_info.value.entity_id == str(entity_id)
     assert "non-existent" in str(exc_info.value)
+
 
 def test_validation_error_has_context():
     with pytest.raises(ValidationError) as exc_info:

@@ -28,8 +28,8 @@ def test_service_lifetime_members() -> None:
 def test_service_lifetime_equality() -> None:
     """Test service lifetime equality comparison."""
     assert ServiceLifetime.SINGLETON == ServiceLifetime.SINGLETON
-    assert ServiceLifetime.SINGLETON != ServiceLifetime.TRANSIENT  # type: ignore[comparison-overlap]
-    assert ServiceLifetime.PER_WORLD != ServiceLifetime.SINGLETON  # type: ignore[comparison-overlap]
+    assert ServiceLifetime.SINGLETON != ServiceLifetime.TRANSIENT
+    assert ServiceLifetime.PER_WORLD != ServiceLifetime.SINGLETON
 
 
 def test_service_lifetime_count() -> None:

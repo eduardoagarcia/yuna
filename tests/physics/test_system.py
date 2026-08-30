@@ -109,7 +109,7 @@ def test_update_emits_collision_events() -> None:
 
     events_received = []
 
-    def handler(event):  # type: ignore[no-untyped-def]
+    def handler(event):
         events_received.append(event)
 
     event_bus.subscribe(event_type="CollisionEvent", handler=handler)
