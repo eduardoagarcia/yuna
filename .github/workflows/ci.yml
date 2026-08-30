@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  quality-gate:
+    name: Lint, Type Check, Test (100% coverage)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
