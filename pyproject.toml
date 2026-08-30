@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Eduardo A. Garcia", email = "eduardo@helloyuna.ai" }]
+authors = [{ name = "Eduardo A. Garcia", email = "support@bashbots.io" }]
 keywords = ["game-engine", "ecs", "gamedev", "entity-component-system"]
 dependencies = [
     "lz4",
