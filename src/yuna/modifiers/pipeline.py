@@ -110,31 +110,44 @@ class ModifierPipeline:
     def _execute_process(
         self, world: Any | None, current_tick: int
     ) -> dict[tuple[EntityID, str], float]:
-        """Execute pipeline processing logic."""
+        """Execute pipeline processing logic.
+
+        A fresh queue is installed before the stages run, so modifiers
+        queued from inside the pipeline (stage callbacks, interceptors)
+        survive to the next flush instead of being cleared with the
+        batch that spawned them.
+
+        A stage that raises discards the batch it was processing: the
+        pooled list is released either way, and the fresh queue keeps
+        only what was added during the failed run.
+        """
         self._tracker.clear_expired(current_tick=current_tick)
 
-        all_modifiers = self._queue.copy()
+        pools = get_global_pools()
+        all_modifiers = self._queue
+        self._queue = pools.modifier_list.acquire()
+
         for modifier in all_modifiers:
             if modifier.duration_ticks is not None:
                 self._tracker.track_modifier(
                     modifier=modifier, current_tick=current_tick
                 )
 
-        if not all_modifiers:
-            return {}
+        try:
+            if not all_modifiers:
+                return {}
 
-        context = ModifierContext(
-            modifiers=all_modifiers,
-            config=self._config,
-            world=world,
-            current_tick=current_tick,
-        )
-        pipe_context = PipelineContext()
-        result = self._pipeline.execute(value=context, context=pipe_context)
-        pools = get_global_pools()
-        pools.modifier_list.release(obj=self._queue)
-        self._queue = pools.modifier_list.acquire()
-        return result.final_values
+            context = ModifierContext(
+                modifiers=all_modifiers,
+                config=self._config,
+                world=world,
+                current_tick=current_tick,
+            )
+            pipe_context = PipelineContext()
+            result = self._pipeline.execute(value=context, context=pipe_context)
+            return result.final_values
+        finally:
+            pools.modifier_list.release(obj=all_modifiers)
 
     def clear_queue(self) -> None:
         """Clear all queued modifiers without processing."""

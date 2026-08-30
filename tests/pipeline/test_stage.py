@@ -145,7 +145,7 @@ def test_stage_with_empty_string() -> None:
     stage = UppercaseStage()
     context = TestContext()
     result = stage.process(input="", context=context)
-    assert result == ""
+    assert not result
 
 
 def test_stage_with_zero_value() -> None:

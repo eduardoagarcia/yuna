@@ -220,7 +220,7 @@ def test_create_formula_with_multiple_parameters() -> None:
     assert dependencies == (dep1, dep2)
 
     resolver = MockConfigResolver({dep1: base1, dep2: base2})
-    result = formula(resolver)
+    result = cast(float, formula(resolver))
     expected = mult * base1 / base2 + offset
     assert abs(result - expected) < 0.0001
 
@@ -302,7 +302,7 @@ def test_create_formula_with_complex_logic() -> None:
     assert ticks_key in dependencies
 
     resolver = MockConfigResolver({baseline_key: baseline, ticks_key: ticks})
-    result = formula(resolver)
+    result = cast(float, formula(resolver))
     expected = (mult * baseline) / ticks
     assert abs(result - expected) < 0.000001
 

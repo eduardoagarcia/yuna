@@ -425,15 +425,15 @@ def test_complex_state_machine_workflow() -> None:
 
     context.velocity = 10.0
     machine.update(context=context, delta_time=0.1)
-    assert machine._current_state == moving
+    assert machine.get_current_state() == moving
 
     context.velocity = 0.0
     machine.update(context=context, delta_time=0.1)
-    assert machine._current_state == stopped
+    assert machine.get_current_state() == stopped
 
     context.position = 0
     machine.update(context=context, delta_time=0.1)
-    assert machine._current_state == idle
+    assert machine.get_current_state() == idle
 
     history = machine.get_state_history()
     assert history == ["idle", "moving", "stopped", "idle"]

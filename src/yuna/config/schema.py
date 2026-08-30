@@ -206,7 +206,7 @@ class ConfigSchema:
 
         Example:
             ConfigSchema.register_formula_pattern(
-                name="driver_cost",
+                name="driver-cost",
                 dependencies=("core.driver_baseline", "core.base_ticks"),
                 factory=lambda mult: lambda cfg: (
                     mult * float(cfg.get("core.driver_baseline"))
@@ -243,7 +243,7 @@ class ConfigSchema:
             schema.define_derived_from_pattern(
                 key="battery_cost",
                 value_type=float,
-                pattern="driver_cost",
+                pattern="driver-cost",
                 pattern_params={"mult": 0.2},
                 description="Navigation battery cost (0.2× passive drain)",
             )

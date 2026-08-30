@@ -6,8 +6,10 @@ from faker import Faker
 
 from yuna.replay.incremental import (
     ComponentChanges,
+    IncrementalRecorder,
     SnapshotDelta,
     apply_delta,
+    compute_component_level_delta,
 )
 from yuna.state.snapshot import WorldSnapshot
 from yuna.types.identifiers import EntityID
@@ -105,3 +107,38 @@ def test_apply_delta_remove_component_from_nonexistent_entity() -> None:
     assert result.tick == 1
     assert entity_id1 in result.entities
     assert entity_id2 not in result.entities
+
+
+def test_component_level_delta_skips_identical_component_objects() -> None:
+    """A component object shared by both snapshots produces no change."""
+    entity_id = EntityID(fake.uuid4())
+    shared_component = {"x": 1.0, "y": 2.0}
+    previous = WorldSnapshot(
+        tick=0,
+        timestamp=0.0,
+        entities={entity_id: {"Position": shared_component}},
+        metadata={},
+    )
+    current = WorldSnapshot(
+        tick=1,
+        timestamp=1.0,
+        entities={entity_id: {"Position": shared_component}},
+        metadata={},
+    )
+
+    delta = compute_component_level_delta(previous=previous, current=current)
+
+    assert delta.components.added == {}
+    assert delta.components.modified == {}
+    assert delta.components.removed == {}
+
+
+def test_finalize_pending_frame_without_pending_frame_is_noop() -> None:
+    """Finalizing with no pending frame leaves the recorder untouched."""
+    recorder = IncrementalRecorder()
+
+    recorder._finalize_pending_frame(world=None)
+
+    assert recorder._pending_frame is None
+    assert recorder._keyframes == {}
+    assert recorder._deltas == {}

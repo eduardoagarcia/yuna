@@ -1,7 +1,11 @@
 """Tests for object pool management."""
 
+from typing import cast
+
 from faker import Faker
 
+from yuna.events.queue import QueuedEvent
+from yuna.modifiers.modifier import Modifier
 from yuna.resources.pool import ObjectPool
 from yuna.resources.pools import (
     GlobalPools,
@@ -10,6 +14,7 @@ from yuna.resources.pools import (
     get_global_pools,
     reset_global_pools,
 )
+from yuna.types.identifiers import EntityID
 
 fake = Faker()
 
@@ -170,7 +175,7 @@ def test_global_pools_event_list_reuse() -> None:
     """Test GlobalPools event list pool reuses objects."""
     pools = GlobalPools()
     list1 = pools.event_list.acquire()
-    list1.append(fake.pyint())
+    list1.append(cast(QueuedEvent, fake.pyint()))
     pools.event_list.release(obj=list1)
     list2 = pools.event_list.acquire()
     assert list2 is list1
@@ -181,7 +186,7 @@ def test_global_pools_entity_set_reuse() -> None:
     """Test GlobalPools entity set pool reuses objects."""
     pools = GlobalPools()
     set1 = pools.entity_set.acquire()
-    set1.add(fake.uuid4())
+    set1.add(EntityID(fake.uuid4()))
     pools.entity_set.release(obj=set1)
     set2 = pools.entity_set.acquire()
     assert set2 is set1
@@ -192,7 +197,7 @@ def test_global_pools_modifier_list_reuse() -> None:
     """Test GlobalPools modifier list pool reuses objects."""
     pools = GlobalPools()
     list1 = pools.modifier_list.acquire()
-    list1.append(fake.pyint())
+    list1.append(cast(Modifier, fake.pyint()))
     pools.modifier_list.release(obj=list1)
     list2 = pools.modifier_list.acquire()
     assert list2 is list1

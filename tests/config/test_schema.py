@@ -102,7 +102,7 @@ def test_config_key_validate_type():
     assert valid is True
     assert not reason
 
-    valid, reason = key.validate(invalid_value)
+    valid, reason = key.validate(cast(int, invalid_value))
     assert valid is False
     assert "Expected int" in reason
 

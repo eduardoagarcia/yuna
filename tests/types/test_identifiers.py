@@ -77,16 +77,16 @@ def test_different_system_ids_not_equal() -> None:
 def test_entity_id_with_empty_string() -> None:
     """Test EntityID can be created with empty string."""
     entity_id = EntityID("")
-    assert entity_id == ""
+    assert not entity_id
 
 
 def test_component_id_with_empty_string() -> None:
     """Test ComponentID can be created with empty string."""
     component_id = ComponentID("")
-    assert component_id == ""
+    assert not component_id
 
 
 def test_system_id_with_empty_string() -> None:
     """Test SystemID can be created with empty string."""
     system_id = SystemID("")
-    assert system_id == ""
+    assert not system_id

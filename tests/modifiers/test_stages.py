@@ -1233,7 +1233,7 @@ def test_process_category_modifiers_set_tie_resolves_to_max_value() -> None:
     stat_config = config.get_stat_config(name="health")
     shared_entity_id = EntityID(fake.uuid4())
     shared_source = fake.word()
-    shared_source_id = fake.uuid4()
+    shared_source_id = EntityID(fake.uuid4())
     lower_set = Modifier(
         entity_id=shared_entity_id,
         stat="health",

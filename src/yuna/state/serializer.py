@@ -252,7 +252,10 @@ class SnapshotSerializer:
         with monitor.sample(category="serialization", name="capture_snapshot"):
             entities_data: dict[EntityID, dict[str, Any]] = {}
 
-            component_types = world.get_component_types()
+            component_types = sorted(
+                world.get_component_types(),
+                key=lambda registered_type: registered_type.__name__,
+            )
             for component_type in component_types:
                 component_name = component_type.__name__
 

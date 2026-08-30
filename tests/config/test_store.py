@@ -400,7 +400,7 @@ def test_get_derived_config_key_evaluates_formula():
 
     store = ConfigStore(schema=schema)
 
-    result = store.get(key=derived_key)
+    result = cast(float, store.get(key=derived_key))
     expected = base_value * multiplier
     assert abs(result - expected) < 0.0001
 
@@ -466,13 +466,13 @@ def test_get_derived_config_key_with_global_default():
 
     store = ConfigStore(schema=schema)
 
-    result1 = store.get(key=derived_key)
+    result1 = cast(float, store.get(key=derived_key))
     expected1 = base_value * 2.0
     assert abs(result1 - expected1) < 0.0001
 
     store.set(key=base_key, value=override_base)
 
-    result2 = store.get(key=derived_key)
+    result2 = cast(float, store.get(key=derived_key))
     expected2 = override_base * 2.0
     assert abs(result2 - expected2) < 0.0001
 

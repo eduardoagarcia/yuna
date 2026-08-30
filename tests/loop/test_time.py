@@ -163,7 +163,7 @@ def test_consecutive_updates_with_varying_elapsed() -> None:
     assert ticks1 == 0
     assert ticks2 == 1
     ticks3 = time_manager.update(elapsed=0.005)
-    assert ticks3 in (0, 1)
+    assert ticks3 in {0, 1}
 
 
 def test_reset_after_multiple_updates() -> None:

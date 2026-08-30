@@ -530,3 +530,67 @@ def test_insert_stage_after() -> None:
     pipeline.process(world=None, current_tick=0)
 
     assert custom_stage.process_count == 1
+
+
+class QueueingStage(PipelineStage[ModifierContext, ModifierContext, PipelineContext]):
+    """Stage that queues a follow-up modifier while the pipeline runs."""
+
+    def __init__(self, pipeline: ModifierPipeline, modifier: Modifier) -> None:
+        self._pipeline = pipeline
+        self._modifier = modifier
+        self.process_count = 0
+
+    @property
+    def name(self) -> str:
+        return "queueing"
+
+    def process(
+        self,
+        value: ModifierContext,
+        context: PipelineContext,
+    ) -> ModifierContext:
+        self.process_count += 1
+        if self.process_count == 1:
+            self._pipeline.queue_modifier(modifier=self._modifier)
+        return value
+
+
+def test_modifier_queued_during_processing_survives_to_next_flush() -> None:
+    """Stage callbacks and interceptors can queue work for the next flush."""
+    config = ModifierConfig()
+    config.register_stat(
+        name="health",
+        min_value=0.0,
+        max_value=100.0,
+        stacking_rule=StackingRule.ADD,
+    )
+    pipeline = ModifierPipeline(config=config)
+    entity_id = EntityID(fake.uuid4())
+    follow_up = Modifier(
+        entity_id=entity_id,
+        stat="health",
+        modification_type=ModificationType.FLAT,
+        value=5.0,
+        priority=ModifierPriority.NORMAL,
+        source="follow_up",
+    )
+    pipeline.insert_stage_after(
+        after=ModifierStage.STACK,
+        stage=QueueingStage(pipeline=pipeline, modifier=follow_up),
+    )
+
+    pipeline.queue_modifier(
+        modifier=Modifier(
+            entity_id=entity_id,
+            stat="health",
+            modification_type=ModificationType.FLAT,
+            value=10.0,
+            priority=ModifierPriority.NORMAL,
+            source="initial",
+        )
+    )
+
+    assert pipeline.process(world=None, current_tick=0) == {(entity_id, "health"): 10.0}
+    assert pipeline.get_queue_size() == 1
+    assert pipeline.process(world=None, current_tick=1) == {(entity_id, "health"): 5.0}
+    assert pipeline.get_queue_size() == 0

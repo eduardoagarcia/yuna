@@ -152,6 +152,59 @@ def test_spatial_system_removes_destroyed_entities() -> None:
     assert entity_id not in entities
 
 
+def test_a_destroyed_static_entity_invalidates_the_static_cache() -> None:
+    """A static entity that dies must stop showing up in the static caches.
+
+    Static positions are cached without expiry because static entities never
+    move, but they can still be destroyed, and callers pathing around them
+    would otherwise route around a cell that is now empty.
+    """
+    world = ECSWorld()
+    entity_id = world.create_entity()
+    position = Vector2(x=10.0, y=20.0)
+    world.add_component(entity_id=entity_id, component=Position(position=position))
+    world.add_component(entity_id=entity_id, component=StaticComponent())
+
+    spatial_system = SpatialSystem(cell_size=10)
+    spatial_system.update(world=world, delta_time=0.016)
+
+    assert spatial_system._grid.get_static_positions_by_component(
+        component_type=StaticComponent,
+    ) == {position}
+    version = spatial_system._grid.static_version
+
+    world.remove_component(entity_id=entity_id, component_type=Position)
+    spatial_system.update(world=world, delta_time=0.016)
+
+    assert (
+        spatial_system._grid.get_static_positions_by_component(
+            component_type=StaticComponent,
+        )
+        == set()
+    )
+    assert spatial_system._grid.static_version != version
+    assert entity_id not in spatial_system._static_entities
+
+
+def test_a_destroyed_dynamic_entity_leaves_the_static_cache_alone() -> None:
+    """Only static removals pay for invalidation, so ordinary deaths cost nothing."""
+    world = ECSWorld()
+    entity_id = world.create_entity()
+    world.add_component(
+        entity_id=entity_id,
+        component=Position(position=Vector2(x=10.0, y=20.0)),
+    )
+
+    spatial_system = SpatialSystem(cell_size=10)
+    spatial_system.update(world=world, delta_time=0.016)
+    version = spatial_system._grid.static_version
+
+    world.remove_component(entity_id=entity_id, component_type=Position)
+    spatial_system.update(world=world, delta_time=0.016)
+
+    assert spatial_system._grid.static_version == version
+
+
 def test_spatial_system_get_in_radius() -> None:
     """Test SpatialSystem radius queries."""
     world = ECSWorld()
@@ -172,6 +225,28 @@ def test_spatial_system_get_in_radius() -> None:
     )
     assert entity_id_1 in nearby
     assert entity_id_2 not in nearby
+
+
+def test_spatial_system_get_in_bounds() -> None:
+    """Test SpatialSystem rectangular bounds queries."""
+    world = ECSWorld()
+    entity_id_1 = world.create_entity()
+    entity_id_2 = world.create_entity()
+    position_1 = Vector2(x=50.0, y=50.0)
+    position_2 = Vector2(x=60.0, y=50.0)
+
+    world.add_component(entity_id=entity_id_1, component=Position(position=position_1))
+    world.add_component(entity_id=entity_id_2, component=Position(position=position_2))
+
+    spatial_system = SpatialSystem(cell_size=10)
+    spatial_system.update(world=world, delta_time=0.016)
+
+    inside = spatial_system.get_in_bounds(
+        min_pos=Vector2(x=45.0, y=45.0),
+        max_pos=Vector2(x=55.0, y=55.0),
+    )
+    assert entity_id_1 in inside
+    assert entity_id_2 not in inside
 
 
 def test_spatial_system_multiple_entities_same_position() -> None:

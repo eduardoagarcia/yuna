@@ -6,18 +6,22 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  quality-gate:
+    name: Lint, Type Check, Test (100% coverage)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           python-version: "3.14"
 
       - name: Sync dependencies
         run: uv sync
+
+      - name: Lint
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Run tests
         run: uv run pytest tests --cov=yuna --cov-report=term-missing --cov-fail-under=100

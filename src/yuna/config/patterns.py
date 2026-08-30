@@ -69,7 +69,7 @@ class FormulaPatternRegistry:
 
         Example:
             registry.register(
-                name="driver_cost",
+                name="driver-cost",
                 dependencies=("core.driver_baseline", "core.base_ticks"),
                 factory=lambda mult: lambda cfg: (
                     mult * float(cfg.get("core.driver_baseline"))
@@ -103,7 +103,7 @@ class FormulaPatternRegistry:
             ConfigSchemaError: If pattern not found
 
         Example:
-            formula, deps = registry.create(name="driver_cost", mult=0.2)
+            formula, deps = registry.create(name="driver-cost", mult=0.2)
         """
         if name not in self._patterns:
             raise ConfigSchemaError(f"Unknown formula pattern: {name}")

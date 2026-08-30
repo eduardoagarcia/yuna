@@ -19,6 +19,7 @@ Fast, dependency-light ECS game engine for Python.
 - **Game loop**: a fixed-timestep loop with an accumulator and dependency-aware scheduling.
 - **Modifiers**: a staged pipeline for stacking, scaling, and expiring stat modifiers.
 - **Networking**: state replication with authority, delta compression, and interest management.
+- **Particles**: a pure particle simulation with world-level fields for short-lived effects.
 - **Physics**: a 2D physics engine with rigid bodies, shapes, and a stepping system.
 - **Prefabs**: reusable entity templates instantiated into any world.
 - **Profiling**: a performance monitor with per-system stats and timing decorators.
@@ -29,6 +30,15 @@ Fast, dependency-light ECS game engine for Python.
 - **Services**: a service locator with provider registration and lifetime control.
 - **Spatial**: spatial partitioning via grids, quadtrees, and BVH for fast collision queries.
 - **State**: snapshotting, serialization, versioning, and migrations for save/load.
+
+### Optional native acceleration
+
+`SpatialGrid` and `SpatialSystem` accept `native_raycast=True`, which routes
+raycasts through an optional `engine_native` extension module when one is
+installed. Yuna does not ship this module: without it the flag is inert and
+raycasts use the pure-Python path, which is the reference implementation and
+behaviorally identical. Games that need faster raycasts can provide their own
+`engine_native` package exposing a compatible `SpatialIndex`.
 
 ## Install
 
@@ -64,7 +74,9 @@ class GravitySystem(System):
         return 100
 
     def update(self, world: ECSWorld, delta_time: float) -> None:
-        for _entity, (pos, vel) in world.query().with_components(Position, Velocity).iterator():
+        for _entity, (pos, vel) in (
+            world.query().with_components(Position, Velocity).iterator()
+        ):
             vel.dy += 9.8 * delta_time
             pos.x += vel.dx * delta_time
             pos.y += vel.dy * delta_time
@@ -81,7 +93,7 @@ for _ in range(60):
     world.update(delta_time=1 / 60)
 
 pos = world.get_component(entity_id=star, component_type=Position)
-print(pos.x, pos.y) # print position
+print(pos.x, pos.y)  # print position
 ```
 
 Sixty ticks is one second at 60 fps. The star falls ~5 units, to `y≈105`.

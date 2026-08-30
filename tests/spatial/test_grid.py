@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from unittest.mock import patch
 
 from faker import Faker
 
@@ -20,6 +21,65 @@ class TestComponent(Component):
     """Test component for ECS integration tests."""
 
     value: int = 0
+
+
+class RecordingNativeIndex:
+    """Stand-in for the optional native spatial index extension."""
+
+    def __init__(self, cell_size: float, grid_box_mode: bool) -> None:
+        self.cell_size = cell_size
+        self.grid_box_mode = grid_box_mode
+        self.raycast_hits = [fake.uuid4()]
+        self.calls: list[tuple] = []
+
+    def add(self, entity_id: str, x: float, y: float) -> None:
+        self.calls.append(("add", entity_id, x, y))
+
+    def remove(self, entity_id: str) -> None:
+        self.calls.append(("remove", entity_id))
+
+    def move_entity(self, entity_id: str, new_x: float, new_y: float) -> None:
+        self.calls.append(("move_entity", entity_id, new_x, new_y))
+
+    def raycast(
+        self,
+        origin_x: float,
+        origin_y: float,
+        dir_x: float,
+        dir_y: float,
+        max_distance: float,
+    ) -> list[str]:
+        self.calls.append(("raycast", origin_x, origin_y, dir_x, dir_y, max_distance))
+        return self.raycast_hits
+
+
+@patch(
+    target="yuna.spatial.grid.NativeSpatialIndex",
+    new=RecordingNativeIndex,
+)
+def test_native_index_mirrors_mutations_and_serves_raycasts() -> None:
+    """The native mirror receives add/move/remove and answers finite raycasts."""
+    grid = SpatialGrid(cell_size=10, native_raycast=True)
+    entity_id = EntityID(fake.uuid4())
+
+    grid.add(entity_id=entity_id, position=Vector2(x=1.0, y=2.0))
+    grid.move(entity_id=entity_id, new_position=Vector2(x=3.0, y=4.0))
+    hits = grid.raycast(
+        origin=Vector2(x=0.0, y=0.0),
+        direction=Vector2(x=1.0, y=0.0),
+        max_distance=5.0,
+    )
+    grid.remove(entity_id=entity_id)
+
+    native_index = grid._native_index
+    assert isinstance(native_index, RecordingNativeIndex)
+    assert hits == native_index.raycast_hits
+    assert native_index.calls == [
+        ("add", str(entity_id), 1.0, 2.0),
+        ("move_entity", str(entity_id), 3.0, 4.0),
+        ("raycast", 0.0, 0.0, 1.0, 0.0, 5.0),
+        ("remove", str(entity_id)),
+    ]
 
 
 def test_spatial_grid_creation() -> None:
@@ -1399,6 +1459,45 @@ def test_get_static_positions_by_component_caches_permanently() -> None:
     assert len(result2) == 1
 
 
+def test_invalidate_static_cache_drops_a_removed_entity() -> None:
+    """A destroyed static entity stops being reported as occupying its cell."""
+    world = ECSWorld()
+    grid = SpatialGrid(cell_size=10)
+    grid.set_world(world=world)
+
+    entity1 = world.create_entity()
+    entity2 = world.create_entity()
+    position1 = Vector2(x=10.0, y=10.0)
+    position2 = Vector2(x=20.0, y=20.0)
+    grid.add(entity_id=entity1, position=position1)
+    grid.add(entity_id=entity2, position=position2)
+    world.add_component(entity_id=entity1, component=TestComponent(value=1))
+    world.add_component(entity_id=entity2, component=TestComponent(value=2))
+
+    assert (
+        len(grid.get_static_positions_by_component(component_type=TestComponent)) == 2
+    )
+
+    world.destroy_entity(entity_id=entity1)
+    world.update(delta_time=0.0)
+    grid.remove(entity_id=entity1)
+    grid.invalidate_static_cache()
+
+    result = grid.get_static_positions_by_component(component_type=TestComponent)
+
+    assert result == {position2}
+
+
+def test_invalidate_static_cache_advances_the_static_version() -> None:
+    """The revision is what lets a caller cache statics without a timer."""
+    grid = SpatialGrid(cell_size=10)
+    before = grid.static_version
+
+    grid.invalidate_static_cache()
+
+    assert grid.static_version != before
+
+
 def test_get_static_positions_by_component_returns_copy() -> None:
     """Test get_static_positions_by_component returns copy of cached data."""
     world = ECSWorld()
@@ -1518,3 +1617,98 @@ def test_raycast_hits_target_flush_against_wall() -> None:
     assert hits
     assert hits[0] == target
     assert wall not in hits
+
+
+def test_collect_cell_candidates_occupied_scan_branch() -> None:
+    """Occupied-cell scan fires when the bounding box exceeds occupied cells."""
+    grid = SpatialGrid(cell_size=1)
+    inside_id = EntityID(fake.uuid4())
+    outside_id = EntityID(fake.uuid4())
+    grid.add(entity_id=inside_id, position=Vector2(x=2.0, y=3.0))
+    grid.add(entity_id=outside_id, position=Vector2(x=90.0, y=90.0))
+    candidates = grid._collect_cell_candidates(
+        min_cell_x=0, max_cell_x=50, min_cell_y=0, max_cell_y=50
+    )
+    assert candidates == {inside_id}
+
+
+def test_collect_cell_candidates_bbox_scan_branch() -> None:
+    """Bounding-box scan fires when occupied cells exceed the box size."""
+    grid = SpatialGrid(cell_size=1)
+    inside_id_1 = EntityID(fake.uuid4())
+    inside_id_2 = EntityID(fake.uuid4())
+    outside_id = EntityID(fake.uuid4())
+    grid.add(entity_id=inside_id_1, position=Vector2(x=0.0, y=0.0))
+    grid.add(entity_id=inside_id_2, position=Vector2(x=1.0, y=0.0))
+    grid.add(entity_id=outside_id, position=Vector2(x=5.0, y=5.0))
+    candidates = grid._collect_cell_candidates(
+        min_cell_x=0, max_cell_x=1, min_cell_y=0, max_cell_y=0
+    )
+    assert candidates == {inside_id_1, inside_id_2}
+
+
+def test_collect_cell_candidates_branches_agree() -> None:
+    """Both branches produce identical candidates for the same box."""
+    grid = SpatialGrid(cell_size=1)
+    inside_ids = [EntityID(fake.uuid4()) for _ in range(4)]
+    inside_positions = [
+        Vector2(x=-1.0, y=-1.0),
+        Vector2(x=0.0, y=0.0),
+        Vector2(x=1.0, y=0.0),
+        Vector2(x=0.0, y=1.0),
+    ]
+    for entity_id, position in zip(inside_ids, inside_positions, strict=True):
+        grid.add(entity_id=entity_id, position=position)
+    for offset in range(20):
+        grid.add(
+            entity_id=EntityID(fake.uuid4()),
+            position=Vector2(x=float(10 + offset), y=10.0),
+        )
+    bbox_scan = grid._collect_cell_candidates(
+        min_cell_x=-1, max_cell_x=1, min_cell_y=-1, max_cell_y=1
+    )
+    occupied_scan = grid._collect_cell_candidates(
+        min_cell_x=-30, max_cell_x=1, min_cell_y=-30, max_cell_y=1
+    )
+    assert bbox_scan == occupied_scan == set(inside_ids)
+
+
+def test_collect_cell_candidates_occupied_scan_preserves_iteration_order() -> None:
+    """The occupied-cell scan builds candidates in bbox scan order.
+
+    The sorted() visit over occupied cells is load-bearing: downstream
+    consumers iterate the returned sets unsorted and sum floats, so the
+    set insertion sequence (and therefore iteration order) must match
+    what the bounding-box scan produces.
+    """
+    grid = SpatialGrid(cell_size=1)
+    for index in range(120):
+        grid.add(
+            entity_id=EntityID(fake.uuid4()),
+            position=Vector2(x=float(index % 15 - 7), y=float(index // 15 - 4)),
+        )
+    min_cell_x, max_cell_x, min_cell_y, max_cell_y = -20, 20, -20, 20
+    bbox_oracle: set[EntityID] = set()
+    for cell_x in range(min_cell_x, max_cell_x + 1):
+        for cell_y in range(min_cell_y, max_cell_y + 1):
+            cell_entities = grid._grid.get((cell_x, cell_y))
+            if cell_entities:
+                bbox_oracle.update(cell_entities)
+    occupied_scan = grid._collect_cell_candidates(
+        min_cell_x=min_cell_x,
+        max_cell_x=max_cell_x,
+        min_cell_y=min_cell_y,
+        max_cell_y=max_cell_y,
+    )
+    assert list(occupied_scan) == list(bbox_oracle)
+
+
+def test_get_in_radius_large_radius_over_sparse_grid() -> None:
+    """Radius query over a sparse grid still applies the exact distance test."""
+    grid = SpatialGrid(cell_size=1)
+    near_id = EntityID(fake.uuid4())
+    far_id = EntityID(fake.uuid4())
+    grid.add(entity_id=near_id, position=Vector2(x=3.0, y=4.0))
+    grid.add(entity_id=far_id, position=Vector2(x=200.0, y=0.0))
+    entities = grid.get_in_radius(position=Vector2(x=0.0, y=0.0), radius=100.0)
+    assert entities == {near_id}

@@ -59,14 +59,22 @@ class SpatialSystem(System):
         self,
         cell_size: int = 10,
         collision_mode: CollisionMode = CollisionMode.CIRCLE,
+        native_raycast: bool = False,
     ):
         """Initialize spatial system.
 
         Args:
             cell_size: Size of spatial grid cells
             collision_mode: Collision detection mode for spatial queries
+            native_raycast: Route raycasts through the optional engine_native
+                extension module. Inert unless an engine_native package is
+                installed; see SpatialGrid for the fallback contract.
         """
-        self._grid = SpatialGrid(cell_size=cell_size, collision_mode=collision_mode)
+        self._grid = SpatialGrid(
+            cell_size=cell_size,
+            collision_mode=collision_mode,
+            native_raycast=native_raycast,
+        )
         self._initialized = False
         self._static_entities: set[EntityID] = set()
 
@@ -129,6 +137,12 @@ class SpatialSystem(System):
         Only updates entities without StaticComponent for performance.
         Automatically handles entity creation/destruction via grid move/remove.
 
+        A static entity that leaves the grid also invalidates the grid's static
+        position caches. Static entities never move, but they can be destroyed,
+        and the caches would otherwise keep reporting them forever. The check
+        costs one set membership per removal and fires only when a static entity
+        actually disappears, so a tick with no destruction pays nothing.
+
         Args:
             world: ECS world
         """
@@ -148,7 +162,9 @@ class SpatialSystem(System):
         for entity_id in sorted(grid_entities):
             if entity_id not in current_entities:
                 self._grid.remove(entity_id=entity_id)
-                self._static_entities.discard(entity_id)
+                if entity_id in self._static_entities:
+                    self._static_entities.remove(entity_id)
+                    self._grid.invalidate_static_cache()
 
     def get_at(self, position: Vector2) -> set[EntityID]:
         """Get all entities at specific position.
@@ -172,3 +188,15 @@ class SpatialSystem(System):
             Set of entity IDs within radius
         """
         return self._grid.get_in_radius(position=position, radius=radius)
+
+    def get_in_bounds(self, min_pos: Vector2, max_pos: Vector2) -> set[EntityID]:
+        """Get all entities within rectangular bounds.
+
+        Args:
+            min_pos: Minimum corner of rectangle
+            max_pos: Maximum corner of rectangle
+
+        Returns:
+            Set of entity IDs within bounds
+        """
+        return self._grid.get_in_bounds(min_pos=min_pos, max_pos=max_pos)

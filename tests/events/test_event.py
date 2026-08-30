@@ -125,7 +125,7 @@ def test_multiple_events_can_be_created() -> None:
     event_2 = TestEvent(timestamp=time.time(), tick=1, message="second")
     event_3 = AnotherEvent(timestamp=time.time(), tick=2, value=42)
     assert event_1 is not event_2
-    assert event_2 is not event_3  # type: ignore[comparison-overlap]
+    assert event_2 is not event_3
 
 
 def test_complex_event_with_multiple_fields() -> None:

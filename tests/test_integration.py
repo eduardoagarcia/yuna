@@ -161,9 +161,9 @@ def test_service_locator_integration() -> None:
     """Test service locator registration and retrieval."""
     locator = ServiceLocator()
 
+    @dataclass
     class TestService:
-        def __init__(self, value: str):
-            self.value = value
+        value: str
 
     service = TestService(value="test")
     locator.register(interface=TestService, factory=lambda: service)

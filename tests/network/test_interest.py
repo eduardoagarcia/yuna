@@ -588,7 +588,7 @@ def test_get_entities_within_budget_critical_entities() -> None:
         entity_id: EntityID, entities: dict[EntityID, dict[str, Any]]
     ) -> bool:
         importance = entities[entity_id].get("Importance", {})
-        return importance.get("tag") == "critical"
+        return bool(importance.get("tag") == "critical")
 
     result = manager.get_entities_within_budget(
         observer_id=observer_id,
